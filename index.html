@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VeriTap — Secure NFC + Biometric Attendance</title>
+<meta name="description" content="Secure NFC + biometric student attendance scanner and admin dashboard — single-file prototype.">
+<meta name="theme-color" content="#0A0E1A">
+<style>
+/* ============================================================
+   VERITAP — Secure NFC + Biometric Attendance System
+   Design tokens & shared styles
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Base palette — dark, technical, "verified" feel */
+  --ink: #0A0E1A;
+  --ink-soft: #121729;
+  --surface-dark: rgba(255, 255, 255, 0.055);
+  --surface-dark-strong: rgba(255, 255, 255, 0.09);
+  --border-dark: rgba(255, 255, 255, 0.10);
+  --text-dark-primary: #EEF1F8;
+  --text-dark-secondary: #9AA4BF;
+
+  --mint: #34D399;
+  --mint-strong: #10B981;
+  --blue: #5B8DEF;
+  --blue-strong: #3E6FE0;
+  --amber: #F5A623;
+  --red: #EF5A5A;
+
+  --radius-lg: 22px;
+  --radius-md: 14px;
+  --radius-sm: 9px;
+
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35);
+
+  /* Light theme values (applied under [data-theme="light"]) */
+  --bg: var(--ink);
+  --bg-elevated: var(--ink-soft);
+  --surface: var(--surface-dark);
+  --surface-strong: var(--surface-dark-strong);
+  --border: var(--border-dark);
+  --text-primary: var(--text-dark-primary);
+  --text-secondary: var(--text-dark-secondary);
+}
+
+:root[data-theme="light"] {
+  --bg: #EEF1F7;
+  --bg-elevated: #FFFFFF;
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --border: rgba(15, 23, 42, 0.08);
+  --text-primary: #10131F;
+  --text-secondary: #5B6478;
+  --shadow-glass: 0 8px 28px rgba(20, 30, 60, 0.10);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  min-height: 100dvh;
+  transition: background 0.3s ease, color 0.3s ease;
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(91, 141, 239, 0.16), transparent 45%),
+    radial-gradient(circle at 85% 90%, rgba(52, 211, 153, 0.12), transparent 45%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+button { font-family: inherit; }
+a { color: inherit; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+/* ---------- Glass primitives ---------- */
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-strong {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+  touch-action: manipulation;
+}
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--mint), var(--mint-strong));
+  border: none;
+  color: #04170F;
+  box-shadow: 0 10px 24px rgba(52, 211, 153, 0.28);
+}
+.btn-blue {
+  background: linear-gradient(135deg, var(--blue), var(--blue-strong));
+  border: none;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(91, 141, 239, 0.30);
+}
+.btn-danger {
+  background: rgba(239, 90, 90, 0.14);
+  border: 1px solid rgba(239, 90, 90, 0.4);
+  color: var(--red);
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.btn-full { width: 100%; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+.badge-online { color: var(--mint); background: rgba(52, 211, 153, 0.12); border-color: rgba(52, 211, 153, 0.3); }
+.badge-online .badge-dot { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+.badge-offline { color: var(--red); background: rgba(239, 90, 90, 0.12); border-color: rgba(239, 90, 90, 0.3); }
+.badge-offline .badge-dot { background: var(--red); }
+.badge-warn { color: var(--amber); background: rgba(245, 166, 35, 0.12); border-color: rgba(245, 166, 35, 0.3); }
+.badge-warn .badge-dot { background: var(--amber); }
+.badge-demo { color: var(--blue); background: rgba(91, 141, 239, 0.14); border-color: rgba(91, 141, 239, 0.35); }
+
+input, select, textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.field { margin-bottom: 16px; }
+
+.text-secondary { color: var(--text-secondary); }
+.text-mint { color: var(--mint); }
+.text-blue { color: var(--blue); }
+.text-amber { color: var(--amber); }
+.text-red { color: var(--red); }
+
+.theme-toggle {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute; left: -999px; top: 0;
+  background: var(--mint); color: #04170F; padding: 10px 16px; z-index: 999;
+  border-radius: 0 0 8px 0; font-weight: 700;
+}
+.skip-link:focus { left: 0; }
+
+/* ============================================================
+   Scanner / Student attendance interface
+   ============================================================ */
+
+.scanner-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 28px;
+}
+
+.scanner-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.scanner-topbar .brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: linear-gradient(135deg, var(--mint), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.brand-name { font-family: var(--font-display); font-weight: 700; font-size: 1.02rem; }
+.brand-sub { font-size: 0.72rem; color: var(--text-secondary); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.status-strip {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.status-strip .clock { font-family: var(--font-display); font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
+
+.offline-banner {
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 166, 35, 0.14);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  color: var(--amber);
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+.offline-banner.show { display: flex; }
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 22px;
+  min-height: 480px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stage-view { display: none; flex-direction: column; align-items: center; text-align: center; flex: 1; animation: fadeIn 0.35s ease; }
+.stage-view.active { display: flex; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.stage-eyebrow { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.stage-title { font-size: 1.5rem; margin-bottom: 8px; }
+.stage-hint { color: var(--text-secondary); font-size: 0.9rem; max-width: 300px; margin-bottom: 28px; }
+
+/* NFC animation */
+.nfc-ring-wrap { position: relative; width: 200px; height: 200px; margin: 10px auto 30px; display: flex; align-items: center; justify-content: center; }
+.nfc-ring {
+  position: absolute; border-radius: 50%;
+  border: 2px solid rgba(91, 141, 239, 0.4);
+  animation: nfcPulse 2.2s ease-out infinite;
+}
+.nfc-ring:nth-child(1) { width: 100%; height: 100%; animation-delay: 0s; }
+.nfc-ring:nth-child(2) { width: 100%; height: 100%; animation-delay: 0.7s; }
+.nfc-ring:nth-child(3) { width: 100%; height: 100%; animation-delay: 1.4s; }
+@keyframes nfcPulse {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(1.05); opacity: 0; }
+}
+.nfc-core {
+  width: 118px; height: 118px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.6rem;
+  background: linear-gradient(135deg, rgba(91,141,239,0.22), rgba(52,211,153,0.18));
+  border: 1px solid var(--border);
+  z-index: 1;
+}
+
+/* Biometric */
+.bio-avatar-wrap { position: relative; width: 128px; height: 128px; margin: 6px auto 22px; }
+.bio-avatar {
+  width: 128px; height: 128px; border-radius: 32px;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  background: var(--surface-strong);
+}
+.bio-ring {
+  position: absolute; inset: -8px; border-radius: 38px;
+  border: 2px dashed rgba(52, 211, 153, 0.5);
+  animation: spin 6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fingerprint-icon {
+  width: 96px; height: 96px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem;
+  background: linear-gradient(135deg, rgba(52,211,153,0.18), rgba(91,141,239,0.14));
+  border: 1px solid var(--border);
+  margin: 8px auto 24px;
+}
+.fingerprint-icon.pulse { animation: fpPulse 1.4s ease-in-out infinite; }
+@keyframes fpPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,0.35); } 50% { box-shadow: 0 0 0 14px rgba(52,211,153,0); } }
+
+.student-card {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 14px 16px; border-radius: var(--radius-md);
+  background: var(--surface-strong); border: 1px solid var(--border);
+  margin-bottom: 22px; text-align: left;
+}
+.student-card img { width: 54px; height: 54px; border-radius: 14px; object-fit: cover; background: var(--bg-elevated); }
+.student-card .s-name { font-weight: 700; font-size: 1rem; }
+.student-card .s-meta { font-size: 0.78rem; color: var(--text-secondary); }
+
+/* Success / failure */
+.result-icon {
+  width: 96px; height: 96px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem; margin-bottom: 18px;
+  animation: popIn 0.4s cubic-bezier(.2,1.4,.4,1);
+}
+.result-icon.success { background: rgba(52,211,153,0.16); border: 2px solid var(--mint); color: var(--mint); }
+.result-icon.fail { background: rgba(239,90,90,0.14); border: 2px solid var(--red); color: var(--red); }
+@keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+.verify-checks { display: flex; gap: 10px; margin: 8px 0 20px; }
+.verify-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+  background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); color: var(--mint);
+}
+.verify-chip.pending { background: var(--surface-strong); color: var(--text-secondary); border-color: var(--border); }
+
+.result-meta { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; }
+.result-time { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; margin-bottom: 18px; }
+
+.stage-actions { margin-top: auto; width: 100%; display: flex; flex-direction: column; gap: 10px; padding-top: 20px; }
+
+.dev-tools {
+  margin-top: 16px;
+  padding: 14px;
+}
+.dev-tools summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
+.dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.dev-grid .btn { min-height: 40px; font-size: 0.78rem; padding: 0 10px; }
+
+.progress-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 18px; }
+.progress-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.progress-dots span.active { background: var(--mint); }
+
+@media (min-width: 480px) {
+  .scanner-shell { padding-top: 24px; }
+}
+
+/* ============================================================
+   Admin dashboard
+   ============================================================ */
+
+.admin-shell { display: flex; min-height: 100dvh; }
+
+/* ---- Login ---- */
+.login-screen {
+  min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.login-card { width: 100%; max-width: 380px; padding: 34px 28px; text-align: center; }
+.login-card .brand-mark { margin: 0 auto 16px; width: 52px; height: 52px; font-size: 1.5rem; border-radius: 15px; }
+.login-card h1 { font-size: 1.35rem; margin-bottom: 4px; }
+.login-card .sub { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 26px; }
+.login-card form { text-align: left; }
+.login-note { font-size: 0.76rem; color: var(--text-secondary); margin-top: 18px; line-height: 1.5; }
+
+/* ---- Sidebar ---- */
+.sidebar {
+  width: 236px; flex-shrink: 0; display: flex; flex-direction: column;
+  padding: 20px 14px; gap: 4px; position: sticky; top: 0; height: 100dvh; z-index: 20;
+  border-right: 1px solid var(--border);
+}
+.sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 22px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; border: 1px solid transparent;
+}
+.nav-item:hover { background: var(--surface); }
+.nav-item.active { background: var(--surface-strong); color: var(--text-primary); border-color: var(--border); }
+.nav-item .n-icon { width: 20px; text-align: center; }
+.sidebar-footer { margin-top: auto; padding: 10px; }
+.role-pill { font-size: 0.7rem; padding: 3px 9px; border-radius: 999px; background: var(--surface-strong); border: 1px solid var(--border); }
+
+.mobile-topbar { display: none; }
+
+/* ---- Main ---- */
+.admin-main { flex: 1; min-width: 0; padding: 22px 26px 60px; }
+.admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+.admin-header h2 { font-size: 1.4rem; }
+.admin-header .sub { color: var(--text-secondary); font-size: 0.85rem; margin-top: 3px; }
+.header-actions { display: flex; gap: 10px; align-items: center; }
+
+.panel { display: none; }
+.panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+/* KPI cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.kpi-card { padding: 18px; }
+.kpi-label { font-size: 0.76rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 8px; }
+.kpi-value { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; }
+.kpi-delta { font-size: 0.74rem; margin-top: 6px; }
+
+.grid-2 { display: grid; grid-template-columns: 1.1fr 1.6fr; gap: 16px; margin-bottom: 18px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 18px; }
+@media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+.card { padding: 20px; }
+.card-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; }
+
+/* Donut */
+.donut-wrap { display: flex; align-items: center; gap: 20px; justify-content: center; flex-wrap: wrap; }
+.donut-legend { display: flex; flex-direction: column; gap: 10px; font-size: 0.82rem; }
+.legend-row { display: flex; align-items: center; gap: 8px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 620px; }
+thead th {
+  text-align: left; padding: 10px 12px; color: var(--text-secondary);
+  font-weight: 600; font-size: 0.76rem; text-transform: none;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:hover { background: var(--surface); }
+.row-avatar { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; background: var(--bg-elevated); }
+.status-chip { padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; display: inline-block; }
+.status-present { background: rgba(52,211,153,0.14); color: var(--mint); }
+.status-absent { background: rgba(239,90,90,0.12); color: var(--red); }
+.status-late { background: rgba(245,166,35,0.14); color: var(--amber); }
+.status-fail { background: rgba(239,90,90,0.12); color: var(--red); }
+.icon-btn { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; }
+
+.toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.toolbar input, .toolbar select { width: auto; min-width: 140px; }
+.toolbar .grow { flex: 1; min-width: 180px; }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(6, 9, 18, 0.55);
+  display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+  backdrop-filter: blur(3px);
+}
+.modal-backdrop.show { display: flex; }
+.modal { width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; padding: 26px; }
+.modal h3 { margin-bottom: 4px; }
+.modal .modal-sub { color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.form-grid .field.full { grid-column: 1 / -1; }
+
+.toast-stack { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
+.toast { padding: 13px 16px; font-size: 0.85rem; font-weight: 600; animation: fadeIn 0.25s ease; }
+
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-cell { aspect-ratio: 1; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; border: 1px solid var(--border); cursor: pointer; }
+.cal-cell.present { background: rgba(52,211,153,0.16); color: var(--mint); font-weight: 700; }
+.cal-cell.absent { background: rgba(239,90,90,0.12); color: var(--red); }
+.cal-cell.late { background: rgba(245,166,35,0.14); color: var(--amber); }
+.cal-cell.holiday { background: var(--surface); color: var(--text-secondary); }
+.cal-cell.empty { border-color: transparent; cursor: default; }
+
+.setup-wizard { max-width: 560px; margin: 40px auto; padding: 30px; }
+.wizard-steps { display: flex; gap: 6px; margin-bottom: 22px; }
+.wizard-steps span { flex: 1; height: 4px; border-radius: 4px; background: var(--border); }
+.wizard-steps span.done { background: var(--mint); }
+
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .mobile-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; position: sticky; top: 0; z-index: 20;
+  }
+  .admin-main { padding: 16px 14px 60px; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ---- Single-file tab switcher ---- */
+.app-tabs {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; gap: 8px; justify-content: center;
+  padding: 10px; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.app-tab {
+  padding: 8px 18px; border-radius: 999px; font-size: 0.82rem; font-weight: 700;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer;
+}
+.app-tab.active { background: var(--surface-strong); color: var(--text-primary); }
+.app-view { display: none; }
+.app-view.active { display: block; }
+
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+
+<div class="app-tabs">
+  <button class="app-tab active" id="tabScanner">📡 Scanner</button>
+  <button class="app-tab" id="tabAdmin">🛡️ Admin dashboard</button>
+</div>
+
+<div class="app-view active" id="scannerApp">
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<div class="scanner-shell" id="main">
+
+  <header class="scanner-topbar glass">
+    <div class="brand">
+      <div class="brand-mark">🛡️</div>
+      <div>
+        <div class="brand-name">Horizon College</div>
+        <div class="brand-sub">Attendance Scanner</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="badge badge-demo visually-hidden" id="demoBadge">DEMO MODE</span>
+      <span class="badge badge-online" id="onlineBadge"><span class="badge-dot"></span> ONLINE</span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark or light theme">🌓</button>
+    </div>
+  </header>
+
+  <div class="status-strip glass">
+    <span id="dateLabel">—</span>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+
+  <div class="offline-banner" id="offlineBanner">
+    ⚠ OFFLINE MODE — attendance will be queued and synced once connection returns.
+  </div>
+
+  <main class="stage glass">
+
+    <!-- IDLE / NFC SCAN -->
+    <section class="stage-view active" data-view="idle" aria-live="polite">
+      <div class="stage-eyebrow">STEP 1 OF 2</div>
+      <h1 class="stage-title">Tap your ID card</h1>
+      <p class="stage-hint" id="nfcSupportNote" style="display:none;"></p>
+      <p class="stage-hint">Hold your student ID card near the back of the phone.</p>
+
+      <div class="nfc-ring-wrap">
+        <div class="nfc-ring"></div>
+        <div class="nfc-ring"></div>
+        <div class="nfc-ring"></div>
+        <div class="nfc-core">📡</div>
+      </div>
+      <p class="text-secondary" style="font-size:0.85rem;">Waiting for student…</p>
+
+      <details class="dev-tools glass" style="margin-top:26px; width:100%; text-align:left;">
+        <summary>Testing / fallback tools</summary>
+        <div class="field" style="margin-top:12px;">
+          <label for="simNfcId">Simulate a card tap (NFC ID)</label>
+          <input id="simNfcId" placeholder="e.g. NFC-1D4A" />
+        </div>
+        <div class="dev-grid">
+          <button class="btn btn-ghost" id="startScanBtn">Restart real NFC listener</button>
+          <button class="btn btn-blue" id="simulateTapBtn">Simulate tap</button>
+        </div>
+        <div class="dev-grid" style="margin-top:8px;">
+          <button class="btn btn-ghost" data-demo-outcome="nfc-detected">Demo: success flow</button>
+          <button class="btn btn-ghost" data-demo-outcome="bio-fail">Demo: biometric fail</button>
+          <button class="btn btn-ghost" data-demo-outcome="unknown-student">Demo: unknown card</button>
+          <button class="btn btn-ghost" data-demo-outcome="duplicate">Demo: duplicate</button>
+          <button class="btn btn-ghost" data-demo-outcome="offline" style="grid-column:1/-1;">Demo: offline mode</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- NFC FOUND -->
+    <section class="stage-view" data-view="found">
+      <div class="stage-eyebrow text-mint">✓ NFC DETECTED</div>
+      <h1 class="stage-title">Student found</h1>
+      <div class="student-card glass-strong" id="studentCardNfc"></div>
+      <p class="stage-hint">Confirm this is you, then verify your identity to complete attendance.</p>
+      <div class="stage-actions">
+        <button class="btn btn-primary btn-full" id="verifyBtn">Verify with phone</button>
+        <button class="btn btn-ghost btn-full" id="cancelBioBtn">Not you? Cancel</button>
+      </div>
+    </section>
+
+    <!-- BIOMETRIC VERIFYING -->
+    <section class="stage-view" data-view="verifying">
+      <div class="stage-eyebrow">STEP 2 OF 2</div>
+      <h1 class="stage-title">Verify your identity</h1>
+      <div class="student-card glass-strong" id="studentCardBio"></div>
+
+      <div class="bio-avatar-wrap">
+        <div class="bio-ring"></div>
+        <img class="bio-avatar" id="bioAvatar" alt="">
+      </div>
+      <p class="stage-hint">Use your phone's fingerprint or face verification when prompted.</p>
+
+      <div class="verify-checks">
+        <span class="verify-chip pending" id="chipNfc" data-label="NFC">… NFC</span>
+        <span class="verify-chip pending" id="chipBio" data-label="Biometric">… Biometric</span>
+      </div>
+
+      <p class="text-secondary" style="font-size:0.78rem; max-width:280px;">
+        Biometric data never leaves your device. This app only receives a cryptographic yes/no result.
+      </p>
+    </section>
+
+    <!-- SUCCESS -->
+    <section class="stage-view" data-view="success">
+      <div class="result-icon success" id="resultIcon">✓</div>
+      <h1 class="stage-title" id="resultTitle">ATTENDANCE MARKED</h1>
+      <div class="student-card glass-strong">
+        <img id="resultAvatar" src="" alt="">
+        <div>
+          <div class="s-name" id="resultName">—</div>
+          <div class="s-meta" id="resultMeta">—</div>
+        </div>
+      </div>
+      <div class="result-time" id="resultTime">--:--</div>
+      <p class="text-secondary" style="font-size:0.8rem;">Returning to scanner…</p>
+    </section>
+
+    <!-- FAILURE -->
+    <section class="stage-view" data-view="failure">
+      <div class="result-icon fail" id="resultIconFail">✕</div>
+      <h1 class="stage-title text-red" id="failTitle">Verification failed</h1>
+      <p class="stage-hint" id="failReason">Please try again or contact the attendance desk.</p>
+      <p class="text-secondary" style="font-size:0.8rem;">Returning to scanner…</p>
+    </section>
+
+  </main>
+
+  <p style="text-align:center; margin-top:14px; font-size:0.72rem;" class="text-secondary">
+    Session: Physics · 12-A · 10:00–11:00 &nbsp;·&nbsp; <a href="admin.html">Admin dashboard →</a> &nbsp;·&nbsp; <span style="text-decoration:underline; cursor:default;" title="Biometric data never leaves the student's device; only WebAuthn credential metadata and attendance timestamps are stored.">Privacy</span>
+  </p>
+</div>
+</div>
+
+<div class="app-view" id="adminApp">
+
+
+<!-- ===================== LOGIN ===================== -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card glass">
+    <div class="brand-mark">🛡️</div>
+    <h1>VeriTap Admin</h1>
+    <p class="sub">Sign in to manage students, attendance and security.</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" required placeholder="admin@college.edu" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" required placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <p class="text-red" id="loginError" style="font-size:0.8rem; min-height:16px; margin-bottom:10px;"></p>
+      <button class="btn btn-primary btn-full" type="submit">Sign in</button>
+    </form>
+    <p class="login-note">Biometric data never leaves the student's device — this system stores only WebAuthn credential metadata, never raw fingerprints. <span style="text-decoration:underline; cursor:default;">Privacy details available in the full project README</span><br><span id="demoBadgeAdmin" class="visually-hidden">Running in DEMO MODE — any email/password signs in and all data shown is sample data.</span></p>
+  </div>
+</div>
+
+<!-- ===================== DASHBOARD ===================== -->
+<div class="admin-shell" id="dashboardShell" style="display:none;">
+
+  <aside class="sidebar glass">
+    <div class="sidebar-brand">
+      <div class="brand-mark" style="width:34px;height:34px;font-size:1rem;">🛡️</div>
+      <div>
+        <div class="brand-name" style="font-size:0.92rem;">VeriTap</div>
+        <div class="brand-sub" style="font-size:0.68rem;">Admin Dashboard</div>
+      </div>
+    </div>
+
+    <nav>
+      <div class="nav-item active" data-panel="overview"><span class="n-icon">📊</span> Overview</div>
+      <div class="nav-item" data-panel="students"><span class="n-icon">🎓</span> Students</div>
+      <div class="nav-item" data-panel="attendance"><span class="n-icon">🗓️</span> Attendance</div>
+      <div class="nav-item" data-panel="sessions"><span class="n-icon">📚</span> Sessions</div>
+      <div class="nav-item" data-panel="devices"><span class="n-icon">📱</span> Devices</div>
+      <div class="nav-item" data-panel="security"><span class="n-icon">🛡️</span> Security Log</div>
+      <div class="nav-item" data-panel="settings"><span class="n-icon">⚙️</span> Settings</div>
+    </nav>
+
+    <div class="sidebar-footer glass-strong">
+      <div style="font-size:0.85rem; font-weight:700;" id="currentUserName">—</div>
+      <div class="role-pill" id="currentUserRole">role</div>
+      <button class="btn btn-ghost btn-full" id="logoutBtn" style="margin-top:10px; min-height:38px; font-size:0.8rem;">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="admin-main" id="adminMain">
+    <div class="admin-header">
+      <div>
+        <h2 id="panelHeading">Overview</h2>
+        <div class="sub">Horizon College of Engineering · 2026–27</div>
+      </div>
+      <div class="header-actions">
+        <span class="badge badge-demo visually-hidden" id="demoBadgeAdmin2">DEMO MODE</span>
+        <button class="theme-toggle" id="themeToggleAdmin" aria-label="Toggle theme">🌓</button>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <section class="panel active" id="panel-overview">
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="grid-2">
+        <div class="card glass">
+          <div class="card-title">Present vs absent — today</div>
+          <div class="donut-wrap">
+            <div id="donutChart"></div>
+            <div class="donut-legend" id="donutLegend"></div>
+          </div>
+        </div>
+        <div class="card glass">
+          <div class="card-title">Weekly attendance trend</div>
+          <div id="weeklyChart"></div>
+        </div>
+      </div>
+      <div class="card glass">
+        <div class="card-title">Biometric data never leaves the student's device</div>
+        <p class="text-secondary" style="font-size:0.85rem; line-height:1.6;">
+          VeriTap uses WebAuthn/passkeys backed by each phone's secure hardware. Only a cryptographic
+          verification result and credential metadata are stored here — never a fingerprint image or template.
+          This is a multi-factor anti-proxy system: NFC card + on-device biometric + registered-credential match,
+          combined with duplicate-attempt blocking and full audit logging. No attendance system can be claimed
+          mathematically impossible to bypass — this design is intended to make proxy attendance significantly harder and fully auditable.
+        </p>
+      </div>
+    </section>
+
+    <!-- STUDENTS -->
+    <section class="panel" id="panel-students">
+      <div class="toolbar">
+        <input class="grow" id="studentSearch" placeholder="Search name, ID, roll no, PRN…">
+        <select id="classFilter"><option value="">All classes</option></select>
+        <button class="btn btn-blue" id="addStudentBtn">+ Add student</button>
+        <button class="btn btn-ghost" id="importCsvBtn" title="Bulk CSV import (see FIREBASE_SETUP.md)">Import CSV</button>
+      </div>
+      <div class="card glass table-wrap">
+        <table>
+          <thead><tr><th></th><th>Name</th><th>Student ID</th><th>Class/Div</th><th>Passkey</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="studentsTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ATTENDANCE -->
+    <section class="panel" id="panel-attendance">
+      <div class="toolbar">
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="present">Present</option>
+          <option value="late">Late</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button class="btn btn-ghost" onclick="Admin.exportAttendanceCsv()">Export CSV</button>
+      </div>
+      <div class="card glass table-wrap">
+        <table>
+          <thead><tr><th></th><th>Name</th><th>Student ID</th><th>Time</th><th>NFC</th><th>Biometric</th><th>Status</th></tr></thead>
+          <tbody id="attendanceTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SESSIONS -->
+    <section class="panel" id="panel-sessions">
+      <div class="card glass table-wrap">
+        <table>
+          <thead><tr><th>Subject</th><th>Teacher</th><th>Class/Div</th><th>Date</th><th>Time</th><th>Room</th></tr></thead>
+          <tbody id="sessionsTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DEVICES -->
+    <section class="panel" id="panel-devices">
+      <div class="card glass table-wrap">
+        <table>
+          <thead><tr><th>Device</th><th>ID</th><th>Location</th><th>Assigned staff</th><th>Status</th><th>Last active</th></tr></thead>
+          <tbody id="devicesTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECURITY LOG -->
+    <section class="panel" id="panel-security">
+      <div class="card glass table-wrap">
+        <table>
+          <thead><tr><th>Timestamp</th><th>Event</th><th>Actor</th><th>Result</th><th>Device</th></tr></thead>
+          <tbody id="securityTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="panel" id="panel-settings">
+      <div class="card glass" style="max-width:520px;">
+        <div class="card-title">Attendance rules</div>
+        <form id="settingsForm">
+          <div class="field"><label>College name</label><input name="collegeName"></div>
+          <div class="field"><label>Academic year</label><input name="academicYear"></div>
+          <div class="field"><label>Attendance start time</label><input name="attendanceStart" type="time"></div>
+          <div class="field"><label>Late threshold (minutes after start)</label><input name="lateThresholdMin" type="number" min="0"></div>
+          <div class="field"><label>Attendance closes (minutes after start)</label><input name="closeThresholdMin" type="number" min="0"></div>
+          <div class="field"><label>Low attendance alert threshold (%)</label><input name="lowAttendanceAlert" type="number" min="0" max="100"></div>
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Student modal -->
+<div class="modal-backdrop" id="studentModal">
+  <div class="modal glass">
+    <h3 id="studentModalTitle">Add new student</h3>
+    <p class="modal-sub">WebAuthn passkey registration happens on the student's own device during onboarding.</p>
+    <form id="studentForm">
+      <div class="form-grid">
+        <div class="field full"><label>Full name</label><input name="name" required></div>
+        <div class="field"><label>Student ID</label><input name="studentId" required></div>
+        <div class="field"><label>Roll number</label><input name="rollNo" required></div>
+        <div class="field"><label>PRN / registration no.</label><input name="prn"></div>
+        <div class="field"><label>NFC card ID</label><input name="nfcId" placeholder="auto-generated if blank"></div>
+        <div class="field"><label>Class</label><input name="class" required></div>
+        <div class="field"><label>Division</label><input name="division" required></div>
+        <div class="field"><label>Course / Department</label><input name="course"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+</div>
+
+<script>
+/* ============================================================
+   /utils — demo dataset (DEMO MODE only)
+   Never confused with real attendance: every screen that shows
+   demo data carries a visible "DEMO MODE" badge.
+   ============================================================ */
+
+const FIRST = ["Rahul", "Aisha", "Vikram", "Priya", "Arjun", "Sneha", "Karan", "Meera", "Devansh", "Ananya", "Rohan", "Ishita", "Kabir", "Tanya", "Yash", "Nisha"];
+const LAST = ["Patil", "Sharma", "Reddy", "Verma", "Iyer", "Nair", "Gupta", "Khan", "Joshi", "Rao", "Mehta", "Singh"];
+const CLASSES = ["11-A", "11-B", "12-A", "12-B"];
+const DIVISIONS = ["A", "B", "C"];
+const COURSES = ["Science", "Commerce", "Arts"];
+
+function seedStudents(n = 40) {
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    const first = FIRST[i % FIRST.length];
+    const last = LAST[(i * 3) % LAST.length];
+    list.push({
+      id: `S${1000 + i}`,
+      name: `${first} ${last}`,
+      studentId: `STU${1000 + i}`,
+      rollNo: String(i + 1).padStart(2, "0"),
+      prn: `PRN2026${String(1000 + i)}`,
+      class: CLASSES[i % CLASSES.length],
+      division: DIVISIONS[i % DIVISIONS.length],
+      course: COURSES[i % COURSES.length],
+      department: COURSES[i % COURSES.length],
+      academicYear: "2026-27",
+      photo: `https://i.pravatar.cc/160?img=${(i % 70) + 1}`,
+      nfcId: `NFC-${(100000 + i * 37).toString(16).toUpperCase()}`,
+      credential: i % 6 === 0 ? null : { id: `cred_${i}`, registeredAt: "2026-06-12" },
+      status: "active",
+      email: "",
+      phone: "",
+      guardianContact: "",
+      registeredAt: "2026-06-12",
+    });
+  }
+  return list;
+}
+
+function seedAttendance(students) {
+  const list = [];
+  const now = Date.now();
+  students.forEach((s, i) => {
+    if (i % 5 === 0) return; // some absent today, no record
+    const late = i % 9 === 0;
+    list.push({
+      id: `A${1000 + i}`,
+      studentId: s.id,
+      studentName: s.name,
+      sessionId: "SESS-PHY-12A",
+      subject: "Physics",
+      class: s.class,
+      division: s.division,
+      nfcResult: "success",
+      biometricResult: i % 13 === 0 ? "failed" : "success",
+      status: i % 13 === 0 ? "failed" : (late ? "late" : "present"),
+      ts: new Date(now - i * 60000).toISOString(),
+      deviceId: "DEV-SCN-01",
+    });
+  });
+  return list;
+}
+
+function seedSecurityLog(students) {
+  const events = [
+    { type: "admin_login", result: "success", actor: "admin@college.edu" },
+    { type: "credential_registration", result: "success", actor: students[2]?.name },
+    { type: "failed_biometric", result: "failed", actor: students[7]?.name },
+    { type: "unregistered_card", result: "failed", actor: "Unknown card NFC-FF221A" },
+    { type: "duplicate_attempt", result: "blocked", actor: students[3]?.name },
+    { type: "student_edit", result: "success", actor: "admin@college.edu" },
+  ];
+  return events.map((e, i) => ({
+    id: `L${i}`,
+    ts: new Date(Date.now() - i * 3600 * 1000).toISOString(),
+    deviceId: "DEV-SCN-01",
+    ...e,
+  }));
+}
+
+const _students = seedStudents(40);
+
+const DemoData = {
+  students: _students,
+  attendance: seedAttendance(_students),
+  securityLog: seedSecurityLog(_students),
+  sessions: [
+    { id: "SESS-PHY-12A", subject: "Physics", teacher: "Mr. Kulkarni", class: "12-A", division: "A", date: "2026-09-17", start: "10:00", end: "11:00", room: "204", type: "Lecture" },
+  ],
+  devices: [
+    { id: "DEV-SCN-01", name: "Front Gate Scanner", location: "Main Entrance", staff: "Security Desk", active: true, lastActive: new Date().toISOString() },
+  ],
+  admins: [
+    { id: "AD1", email: "admin@college.edu", role: "super_admin", name: "System Administrator" },
+  ],
+  settings: {
+    collegeName: "Horizon College of Engineering",
+    academicYear: "2026-27",
+    lateThresholdMin: 15,
+    closeThresholdMin: 30,
+    attendanceStart: "09:00",
+    lowAttendanceAlert: 75,
+    theme: "dark",
+  },
+};
+
+window.DemoData = DemoData;
+
+</script>
+<script>
+/* ============================================================
+   /firebase — initialization + thin data-access layer
+   ------------------------------------------------------------
+   Fill in firebaseConfig below with your own project's values
+   (see FIREBASE_SETUP.md). Until you do, VeriTap runs fully in
+   DEMO MODE using in-memory data — nothing touches a network.
+
+   SECURITY: this file is public (it ships to every browser).
+   It must never contain a service-account key or Admin SDK
+   credential — only the public web-app config, which is safe
+   to expose and is restricted by Firebase Security Rules
+   (see /firestore.rules) rather than by secrecy.
+   ============================================================ */
+
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+};
+
+const IS_CONFIGURED = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+// Global flag other scripts check. True until a real config is supplied.
+window.DEMO_MODE = !IS_CONFIGURED;
+
+let app = null, auth = null, db = null, storage = null;
+
+async function initFirebase() {
+  if (!IS_CONFIGURED) {
+    console.info("[VeriTap] No Firebase config found — running in DEMO MODE.");
+    return null;
+  }
+  try {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const authMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    const fsMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const stMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js");
+
+    app = initializeApp(firebaseConfig);
+    auth = authMod.getAuth(app);
+    db = fsMod.getFirestore(app);
+    storage = stMod.getStorage(app);
+
+    window.__fb = { app, auth, db, storage, authMod, fsMod, stMod };
+    window.DEMO_MODE = false;
+    return window.__fb;
+  } catch (err) {
+    console.error("[VeriTap] Firebase failed to initialize — falling back to DEMO MODE.", err);
+    window.DEMO_MODE = true;
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------
+   Data-access layer. Every function below has a demo (in-memory)
+   path and a live (Firestore) path. UI code calls these without
+   caring which mode is active.
+
+   Firestore structure (see FIREBASE_SETUP.md for rules):
+     /students/{studentId}
+     /students/{studentId}/credentials/{credentialId}
+     /attendance/{attendanceId}
+     /sessions/{sessionId}
+     /admins/{adminId}
+     /devices/{deviceId}
+     /securityLogs/{logId}
+     /settings/{settingId}
+   ------------------------------------------------------------ */
+
+const DataStore = {
+
+  async findStudentByNfc(nfcId) {
+    if (window.DEMO_MODE) {
+      return DemoData.students.find(s => s.nfcId === nfcId) || null;
+    }
+    const { collection, query, where, getDocs } = window.__fb.fsMod;
+    const q = query(collection(window.__fb.db, "students"), where("nfcId", "==", nfcId));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() };
+  },
+
+  async getStudent(id) {
+    if (window.DEMO_MODE) return DemoData.students.find(s => s.id === id) || null;
+    const { doc, getDoc } = window.__fb.fsMod;
+    const d = await getDoc(doc(window.__fb.db, "students", id));
+    return d.exists() ? { id: d.id, ...d.data() } : null;
+  },
+
+  async listStudents() {
+    if (window.DEMO_MODE) return DemoData.students;
+    const { collection, getDocs } = window.__fb.fsMod;
+    const snap = await getDocs(collection(window.__fb.db, "students"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async upsertStudent(student) {
+    if (window.DEMO_MODE) {
+      const i = DemoData.students.findIndex(s => s.id === student.id);
+      if (i >= 0) DemoData.students[i] = { ...DemoData.students[i], ...student };
+      else DemoData.students.push({ id: student.id || `S${Date.now()}`, ...student });
+      return true;
+    }
+    const { doc, setDoc } = window.__fb.fsMod;
+    const id = student.id || crypto.randomUUID();
+    await setDoc(doc(window.__fb.db, "students", id), student, { merge: true });
+    return true;
+  },
+
+  async deleteStudent(id) {
+    if (window.DEMO_MODE) {
+      DemoData.students = DemoData.students.filter(s => s.id !== id);
+      return true;
+    }
+    const { doc, deleteDoc } = window.__fb.fsMod;
+    await deleteDoc(doc(window.__fb.db, "students", id));
+    return true;
+  },
+
+  async recordAttendance(entry) {
+    // entry: { studentId, sessionId, nfcResult, biometricResult, status, ts, deviceId }
+    if (window.DEMO_MODE) {
+      const rec = { id: `A${Date.now()}`, ...entry };
+      DemoData.attendance.unshift(rec);
+      return rec;
+    }
+    const { collection, addDoc, serverTimestamp } = window.__fb.fsMod;
+    const ref = await addDoc(collection(window.__fb.db, "attendance"), {
+      ...entry,
+      ts: serverTimestamp(),
+    });
+    return { id: ref.id, ...entry };
+  },
+
+  async hasMarkedToday(studentId) {
+    const today = new Date().toDateString();
+    if (window.DEMO_MODE) {
+      return DemoData.attendance.some(a => a.studentId === studentId &&
+        new Date(a.ts).toDateString() === today && a.status !== "failed");
+    }
+    const { collection, query, where, getDocs } = window.__fb.fsMod;
+    const q = query(collection(window.__fb.db, "attendance"), where("studentId", "==", studentId));
+    const snap = await getDocs(q);
+    return snap.docs.some(d => new Date(d.data().ts?.toDate?.() || d.data().ts).toDateString() === today);
+  },
+
+  async listAttendance() {
+    if (window.DEMO_MODE) return DemoData.attendance;
+    const { collection, getDocs, orderBy, query } = window.__fb.fsMod;
+    const q = query(collection(window.__fb.db, "attendance"), orderBy("ts", "desc"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async logSecurityEvent(evt) {
+    // evt: { type, result, actor, detail, deviceId }
+    if (window.DEMO_MODE) {
+      DemoData.securityLog.unshift({ id: `L${Date.now()}`, ts: new Date().toISOString(), ...evt });
+      return true;
+    }
+    const { collection, addDoc, serverTimestamp } = window.__fb.fsMod;
+    await addDoc(collection(window.__fb.db, "securityLogs"), { ...evt, ts: serverTimestamp() });
+    return true;
+  },
+
+  async listSecurityLog() {
+    if (window.DEMO_MODE) return DemoData.securityLog;
+    const { collection, getDocs, orderBy, query } = window.__fb.fsMod;
+    const q = query(collection(window.__fb.db, "securityLogs"), orderBy("ts", "desc"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async getSettings() {
+    if (window.DEMO_MODE) return DemoData.settings;
+    const { doc, getDoc } = window.__fb.fsMod;
+    const d = await getDoc(doc(window.__fb.db, "settings", "general"));
+    return d.exists() ? d.data() : DemoData.settings;
+  },
+
+  async saveSettings(settings) {
+    if (window.DEMO_MODE) { Object.assign(DemoData.settings, settings); return true; }
+    const { doc, setDoc } = window.__fb.fsMod;
+    await setDoc(doc(window.__fb.db, "settings", "general"), settings, { merge: true });
+    return true;
+  },
+
+  // WebAuthn credential metadata only — never raw biometric data.
+  async saveCredential(studentId, credentialMeta) {
+    if (window.DEMO_MODE) {
+      const s = DemoData.students.find(s => s.id === studentId);
+      if (s) s.credential = credentialMeta;
+      return true;
+    }
+    const { doc, setDoc, collection } = window.__fb.fsMod;
+    await setDoc(doc(collection(window.__fb.db, "students", studentId, "credentials"), credentialMeta.id), credentialMeta);
+    return true;
+  },
+
+  async revokeCredential(studentId) {
+    if (window.DEMO_MODE) {
+      const s = DemoData.students.find(s => s.id === studentId);
+      if (s) s.credential = null;
+      return true;
+    }
+    // In production: delete the credential doc(s) under students/{id}/credentials
+    return true;
+  },
+};
+
+window.VeriTapDB = DataStore;
+window.initFirebase = initFirebase;
+
+</script>
+<script>
+/* ============================================================
+   /nfc — Web NFC (NDEFReader) wrapper
+   ------------------------------------------------------------
+   Real NFC reading requires: Chrome for Android, a secure
+   (HTTPS) context, and physical NFC hardware. It is NOT
+   available on iOS Safari or desktop browsers — those always
+   fall through to the controlled admin/testing fallback below,
+   which is clearly labeled and never treated as equivalent to
+   a real card tap in production (see spec section 42).
+   ============================================================ */
+
+const NfcModule = {
+  isSupported() {
+    return "NDEFReader" in window;
+  },
+
+  /**
+   * Starts listening for an NFC tap.
+   * onRead(serialNumberOrRecordText) is called once a tag is read.
+   * onError(err) is called on failure/permission-denied.
+   * Returns a stop() function.
+   */
+  async startScan(onRead, onError) {
+    if (!this.isSupported()) {
+      onError(new Error("NFC_UNSUPPORTED"));
+      return () => {};
+    }
+    try {
+      const reader = new NDEFReader();
+      await reader.scan();
+      const handleReading = ({ message, serialNumber }) => {
+        // Prefer a text record if the card was written with one;
+        // otherwise use the tag's hardware serial number as the identifier.
+        let payload = serialNumber;
+        try {
+          for (const record of message.records) {
+            if (record.recordType === "text") {
+              const decoder = new TextDecoder(record.encoding || "utf-8");
+              payload = decoder.decode(record.data);
+              break;
+            }
+          }
+        } catch (_) { /* fall back to serialNumber */ }
+        onRead(payload);
+      };
+      reader.addEventListener("reading", handleReading);
+      reader.addEventListener("readingerror", () => onError(new Error("NFC_READ_ERROR")));
+      return () => reader.removeEventListener("reading", handleReading);
+    } catch (err) {
+      onError(err);
+      return () => {};
+    }
+  },
+
+  // Controlled fallback for admin/testing use only when Web NFC is
+  // unavailable. Never wired into the production scan button silently —
+  // the UI must show this is a manual/demo path, not a real card tap.
+  simulateTap(nfcId, onRead) {
+    setTimeout(() => onRead(nfcId), 900);
+  },
+};
+
+window.NfcModule = NfcModule;
+
+</script>
+<script>
+/* ============================================================
+   /webauthn — passkey registration & assertion
+   ------------------------------------------------------------
+   The browser's WebAuthn API talks directly to the device's
+   secure hardware (Secure Enclave / TEE / TPM). This code never
+   sees a fingerprint image or template — only a signed
+   cryptographic assertion proving the registered authenticator
+   approved the request. That's what gets sent to the server;
+   the fingerprint/face match itself happens entirely on-device.
+
+   IMPORTANT — production requirement:
+   The `challenge` used below MUST be generated server-side
+   (Cloud Function) and the resulting attestation/assertion MUST
+   be verified server-side before trusting it. This client-only
+   version is for prototype/demo purposes. See FIREBASE_SETUP.md
+   step 6 for wiring this to a verifying Cloud Function.
+   ============================================================ */
+
+const WebAuthnModule = {
+  isSupported() {
+    return window.PublicKeyCredential !== undefined;
+  },
+
+  async platformAuthenticatorAvailable() {
+    if (!this.isSupported()) return false;
+    try {
+      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch {
+      return false;
+    }
+  },
+
+  _randomChallenge() {
+    return crypto.getRandomValues(new Uint8Array(32));
+  },
+
+  /**
+   * Registers a new passkey bound to this device for a student.
+   * Returns { id, publicKey, registeredAt } — safe metadata only.
+   */
+  async registerCredential(studentId, studentName) {
+    if (!this.isSupported()) throw new Error("WEBAUTHN_UNSUPPORTED");
+
+    const publicKey = {
+      challenge: this._randomChallenge(), // ⚠ replace with server-issued challenge in production
+      rp: { name: "VeriTap Attendance" },
+      user: {
+        id: new TextEncoder().encode(studentId),
+        name: studentName,
+        displayName: studentName,
+      },
+      pubKeyCredParams: [
+        { type: "public-key", alg: -7 },   // ES256
+        { type: "public-key", alg: -257 }, // RS256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: "platform", // forces the phone's built-in biometric/PIN
+        userVerification: "required",
+      },
+      timeout: 60000,
+      attestation: "none",
+    };
+
+    const cred = await navigator.credentials.create({ publicKey });
+    const meta = {
+      id: cred.id,
+      studentId,
+      publicKey: btoa(String.fromCharCode(...new Uint8Array(cred.response.getPublicKey?.() || []))) || null,
+      registeredAt: new Date().toISOString(),
+    };
+    return meta;
+  },
+
+  /**
+   * Requests a biometric assertion to verify identity at scan time.
+   * Returns true if the platform authenticator approved the request.
+   * Server-side, you would additionally verify the signature against
+   * the stored public key — never trust the client result alone in
+   * a real deployment.
+   */
+  async verifyAssertion(credentialId) {
+    if (!this.isSupported()) throw new Error("WEBAUTHN_UNSUPPORTED");
+
+    const publicKey = {
+      challenge: this._randomChallenge(), // ⚠ replace with server-issued challenge in production
+      allowCredentials: credentialId
+        ? [{ id: Uint8Array.from(atob(credentialId), c => c.charCodeAt(0)), type: "public-key" }]
+        : [],
+      userVerification: "required",
+      timeout: 60000,
+    };
+
+    const assertion = await navigator.credentials.get({ publicKey });
+    return Boolean(assertion);
+  },
+
+  // Demo-mode simulation — no real authenticator involved.
+  simulateVerify(succeed = true) {
+    return new Promise(resolve => setTimeout(() => resolve(succeed), 1100));
+  },
+};
+
+window.WebAuthnModule = WebAuthnModule;
+
+</script>
+<script>
+/* ============================================================
+   /scanner — scanner screen orchestration
+   Flow: idle → nfc-found → biometric → success/failure → idle
+   ============================================================ */
+
+const Scanner = {
+  currentStudent: null,
+  currentSession: { id: "SESS-PHY-12A", subject: "Physics", class: "12-A", division: "A" },
+  stopNfc: null,
+  deviceId: "DEV-SCN-01",
+
+  els: {},
+
+  init() {
+    this.els = {
+      views: document.querySelectorAll(".stage-view"),
+      clock: document.getElementById("clock"),
+      dateLabel: document.getElementById("dateLabel"),
+      onlineBadge: document.getElementById("onlineBadge"),
+      offlineBanner: document.getElementById("offlineBanner"),
+      nfcSupportNote: document.getElementById("nfcSupportNote"),
+      studentCardNfc: document.getElementById("studentCardNfc"),
+      studentCardBio: document.getElementById("studentCardBio"),
+      bioAvatar: document.getElementById("bioAvatar"),
+      verifyBtn: document.getElementById("verifyBtn"),
+      resultIcon: document.getElementById("resultIcon"),
+      resultTitle: document.getElementById("resultTitle"),
+      resultName: document.getElementById("resultName"),
+      resultTime: document.getElementById("resultTime"),
+      resultMeta: document.getElementById("resultMeta"),
+      chipNfc: document.getElementById("chipNfc"),
+      chipBio: document.getElementById("chipBio"),
+      failReason: document.getElementById("failReason"),
+      demoBadge: document.getElementById("demoBadge"),
+      simInput: document.getElementById("simNfcId"),
+    };
+
+    this.tickClock();
+    setInterval(() => this.tickClock(), 1000 * 15);
+
+    window.addEventListener("online", () => this.updateConnectivity());
+    window.addEventListener("offline", () => this.updateConnectivity());
+    this.updateConnectivity();
+
+    if (window.DEMO_MODE) this.els.demoBadge.classList.remove("visually-hidden");
+
+    if (!NfcModule.isSupported()) {
+      this.els.nfcSupportNote.textContent = "NFC scanning is not supported on this device/browser. Use the fallback below for testing.";
+      this.els.nfcSupportNote.style.display = "block";
+    }
+
+    document.getElementById("startScanBtn").addEventListener("click", () => this.beginNfcListen());
+    document.getElementById("simulateTapBtn").addEventListener("click", () => this.runSimulatedTap());
+    this.els.verifyBtn.addEventListener("click", () => this.runBiometricVerify());
+    document.getElementById("cancelBioBtn").addEventListener("click", () => this.reset());
+    document.querySelectorAll("[data-demo-outcome]").forEach(btn => {
+      btn.addEventListener("click", () => this.runDemoOutcome(btn.dataset.demoOutcome));
+    });
+
+    this.goTo("idle");
+    this.beginNfcListen();
+  },
+
+  tickClock() {
+    const now = new Date();
+    this.els.clock.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    this.els.dateLabel.textContent = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  },
+
+  updateConnectivity() {
+    const online = navigator.onLine;
+    this.els.onlineBadge.className = `badge ${online ? "badge-online" : "badge-offline"}`;
+    this.els.onlineBadge.innerHTML = `<span class="badge-dot"></span> ${online ? "ONLINE" : "OFFLINE"}`;
+    this.els.offlineBanner.classList.toggle("show", !online);
+  },
+
+  goTo(view) {
+    this.els.views.forEach(v => v.classList.toggle("active", v.dataset.view === view));
+  },
+
+  async beginNfcListen() {
+    if (this.stopNfc) this.stopNfc();
+    this.stopNfc = await NfcModule.startScan(
+      (payload) => this.handleNfcPayload(payload),
+      (err) => { /* silent — fallback UI already shown */ }
+    );
+  },
+
+  runSimulatedTap() {
+    const id = this.els.simInput.value.trim() || DemoData.students[0].nfcId;
+    NfcModule.simulateTap(id, (payload) => this.handleNfcPayload(payload));
+  },
+
+  async handleNfcPayload(nfcId) {
+    const student = await VeriTapDB.findStudentByNfc(nfcId);
+
+    if (!student) {
+      await VeriTapDB.logSecurityEvent({ type: "unregistered_card", result: "failed", actor: `Unknown card ${nfcId}`, deviceId: this.deviceId });
+      return this.showFailure("Card verification failed.", "This ID card is not registered to any student.");
+    }
+    if (student.status !== "active") {
+      return this.showFailure("Student not registered.", "This student's registration is inactive.");
+    }
+    const alreadyMarked = await VeriTapDB.hasMarkedToday(student.id);
+    if (alreadyMarked) {
+      return this.showFailure("Attendance already marked.", `${student.name} already checked in today.`);
+    }
+
+    this.currentStudent = student;
+    this.renderStudentCards(student);
+    this.setChip("chipNfc", "success");
+    this.setChip("chipBio", "pending");
+    this.goTo("found");
+  },
+
+  renderStudentCards(student) {
+    const html = `
+      <img src="${student.photo}" alt="">
+      <div>
+        <div class="s-name">${student.name}</div>
+        <div class="s-meta">${student.studentId} · ${student.class} · Div ${student.division} · Roll ${student.rollNo}</div>
+      </div>`;
+    this.els.studentCardNfc.innerHTML = html;
+    this.els.studentCardBio.innerHTML = html;
+    this.els.bioAvatar.src = student.photo;
+  },
+
+  setChip(id, state) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle("pending", state === "pending");
+    el.innerHTML = state === "success"
+      ? `✓ ${el.dataset.label}`
+      : state === "failed"
+      ? `✕ ${el.dataset.label}`
+      : `… ${el.dataset.label}`;
+  },
+
+  async runBiometricVerify() {
+    this.goTo("verifying");
+    const student = this.currentStudent;
+    let ok = false;
+
+    try {
+      if (window.DEMO_MODE || !WebAuthnModule.isSupported() || !student.credential) {
+        ok = await WebAuthnModule.simulateVerify(true);
+      } else {
+        ok = await WebAuthnModule.verifyAssertion(student.credential.id);
+      }
+    } catch (err) {
+      ok = false;
+    }
+
+    if (ok) {
+      this.setChip("chipBio", "success");
+      await this.markAttendance(student, "success");
+    } else {
+      this.setChip("chipBio", "failed");
+      await VeriTapDB.logSecurityEvent({ type: "failed_biometric", result: "failed", actor: student.name, deviceId: this.deviceId });
+      this.showFailure("Identity verification failed.", "Biometric verification did not match the registered credential.");
+    }
+  },
+
+  async markAttendance(student, biometricResult) {
+    const now = new Date();
+    const settings = await VeriTapDB.getSettings();
+    const [h, m] = (settings.attendanceStart || "09:00").split(":").map(Number);
+    const startMinutes = h * 60 + m;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const isLate = nowMinutes > startMinutes + (settings.lateThresholdMin || 15);
+
+    const record = await VeriTapDB.recordAttendance({
+      studentId: student.id,
+      studentName: student.name,
+      sessionId: this.currentSession.id,
+      subject: this.currentSession.subject,
+      class: student.class,
+      division: student.division,
+      nfcResult: "success",
+      biometricResult,
+      status: isLate ? "late" : "present",
+      ts: now.toISOString(),
+      deviceId: this.deviceId,
+    });
+
+    await VeriTapDB.logSecurityEvent({
+      type: "attendance_marked", result: "success", actor: student.name, deviceId: this.deviceId,
+    });
+
+    this.els.resultIcon.className = "result-icon success";
+    this.els.resultIcon.textContent = "✓";
+    this.els.resultTitle.textContent = "ATTENDANCE MARKED";
+    this.els.resultName.textContent = student.name;
+    this.els.resultTime.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    this.els.resultMeta.textContent = `${this.currentSession.subject} · ${isLate ? "Late arrival" : "On time"}`;
+    document.getElementById("resultAvatar").src = student.photo;
+    this.goTo("success");
+
+    setTimeout(() => this.reset(), 4500);
+  },
+
+  showFailure(title, detail) {
+    this.els.resultIcon.className = "result-icon fail";
+    this.els.resultIcon.textContent = "✕";
+    document.getElementById("failTitle").textContent = title;
+    this.els.failReason.textContent = detail;
+    this.goTo("failure");
+    setTimeout(() => this.reset(), 4000);
+  },
+
+  runDemoOutcome(kind) {
+    const student = DemoData.students[Math.floor(Math.random() * 6)];
+    switch (kind) {
+      case "nfc-detected":
+        this.handleNfcPayload(student.nfcId);
+        break;
+      case "bio-fail":
+        this.currentStudent = student;
+        this.renderStudentCards(student);
+        this.goTo("found");
+        setTimeout(async () => {
+          this.goTo("verifying");
+          this.setChip("chipNfc", "success");
+          setTimeout(async () => {
+            this.setChip("chipBio", "failed");
+            await VeriTapDB.logSecurityEvent({ type: "failed_biometric", result: "failed", actor: student.name, deviceId: this.deviceId });
+            this.showFailure("Identity verification failed.", "Biometric verification did not match the registered credential.");
+          }, 900);
+        }, 400);
+        break;
+      case "unknown-student":
+        this.handleNfcPayload("NFC-UNKNOWN-CARD");
+        break;
+      case "duplicate":
+        VeriTapDB.hasMarkedToday = async () => true;
+        this.handleNfcPayload(student.nfcId);
+        setTimeout(() => { delete VeriTapDB.hasMarkedToday; }, 10);
+        break;
+      case "offline":
+        this.els.offlineBanner.classList.add("show");
+        setTimeout(() => this.updateConnectivity(), 3500);
+        break;
+    }
+  },
+
+  reset() {
+    this.currentStudent = null;
+    this.setChip("chipNfc", "pending");
+    this.setChip("chipBio", "pending");
+    this.goTo("idle");
+  },
+};
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await window.initFirebase();
+  Scanner.init();
+});
+
+</script>
+<script>
+/* ============================================================
+   /admin — dashboard logic
+   ============================================================ */
+
+const Admin = {
+  currentUser: null, // { email, role }
+  state: { students: [], attendance: [], log: [], settings: {} },
+
+  async init() {
+    await window.initFirebase();
+    this.wireLogin();
+    this.wireNav();
+    this.wireModals();
+    document.getElementById("demoBadgeAdmin")?.classList.toggle("visually-hidden", !window.DEMO_MODE);
+
+    // Auto-login shortcut in demo mode isn't automatic — admin still "logs in"
+    // to demonstrate the auth flow, but any email/password is accepted below.
+  },
+
+  /* ---------------- AUTH ---------------- */
+  wireLogin() {
+    const form = document.getElementById("loginForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPassword").value;
+      const errEl = document.getElementById("loginError");
+      errEl.textContent = "";
+
+      if (window.DEMO_MODE) {
+        if (!email || !pass) { errEl.textContent = "Enter an email and password to continue (demo accepts any values)."; return; }
+        this.currentUser = { email, role: "super_admin", name: email.split("@")[0] };
+        await VeriTapDB.logSecurityEvent({ type: "admin_login", result: "success", actor: email });
+        return this.enterDashboard();
+      }
+
+      try {
+        const { signInWithEmailAndPassword } = window.__fb.authMod;
+        const cred = await signInWithEmailAndPassword(window.__fb.auth, email, pass);
+        this.currentUser = { email: cred.user.email, role: "admin", name: cred.user.email.split("@")[0] };
+        await VeriTapDB.logSecurityEvent({ type: "admin_login", result: "success", actor: email });
+        this.enterDashboard();
+      } catch (err) {
+        errEl.textContent = "Sign-in failed. Check your credentials.";
+      }
+    });
+  },
+
+  async enterDashboard() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("dashboardShell").style.display = "flex";
+    document.getElementById("currentUserName").textContent = this.currentUser.name;
+    document.getElementById("currentUserRole").textContent = this.currentUser.role.replace("_", " ");
+    await this.refreshAll();
+    this.renderOverview();
+  },
+
+  logout() {
+    this.currentUser = null;
+    document.getElementById("dashboardShell").style.display = "none";
+    document.getElementById("loginScreen").style.display = "flex";
+  },
+
+  /* ---------------- NAV ---------------- */
+  wireNav() {
+    document.querySelectorAll(".nav-item[data-panel]").forEach(item => {
+      item.addEventListener("click", () => this.showPanel(item.dataset.panel));
+    });
+    document.getElementById("logoutBtn").addEventListener("click", () => this.logout());
+    document.getElementById("themeToggleAdmin").addEventListener("click", () => {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+      root.setAttribute("data-theme", next);
+      localStorage.setItem("veritap-theme", next);
+    });
+  },
+
+  async showPanel(name) {
+    document.querySelectorAll(".nav-item").forEach(i => i.classList.toggle("active", i.dataset.panel === name));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${name}`));
+    const heading = document.getElementById("panelHeading");
+    if (heading) heading.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+    if (name === "students") this.renderStudents();
+    if (name === "attendance") this.renderAttendance();
+    if (name === "security") this.renderSecurityLog();
+    if (name === "settings") this.renderSettings();
+    if (name === "sessions") this.renderSessions();
+    if (name === "devices") this.renderDevices();
+    if (name === "overview") this.renderOverview();
+  },
+
+  async refreshAll() {
+    this.state.students = await VeriTapDB.listStudents();
+    this.state.attendance = await VeriTapDB.listAttendance();
+    this.state.log = await VeriTapDB.listSecurityLog();
+    this.state.settings = await VeriTapDB.getSettings();
+  },
+
+  /* ---------------- OVERVIEW ---------------- */
+  renderOverview() {
+    const total = this.state.students.length;
+    const todayRecords = this.state.attendance.filter(a => new Date(a.ts).toDateString() === new Date().toDateString());
+    const present = todayRecords.filter(a => a.status === "present" || a.status === "late").length;
+    const late = todayRecords.filter(a => a.status === "late").length;
+    const failed = todayRecords.filter(a => a.status === "failed").length;
+    const absent = Math.max(total - present, 0);
+    const pct = total ? ((present / total) * 100).toFixed(1) : "0.0";
+
+    const kpis = [
+      { label: "Total students", value: total },
+      { label: "Present today", value: present, cls: "text-mint" },
+      { label: "Absent today", value: absent, cls: "text-red" },
+      { label: "Late arrivals", value: late, cls: "text-amber" },
+      { label: "Attendance %", value: pct + "%" },
+      { label: "Failed verifications", value: failed, cls: "text-red" },
+    ];
+    document.getElementById("kpiGrid").innerHTML = kpis.map(k => `
+      <div class="kpi-card glass">
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value ${k.cls || ""}">${k.value}</div>
+      </div>`).join("");
+
+    this.drawDonut(present, absent);
+    this.drawWeekly();
+  },
+
+  drawDonut(present, absent) {
+    const total = present + absent || 1;
+    const presentPct = present / total;
+    const r = 60, c = 2 * Math.PI * r;
+    const presentLen = c * presentPct;
+    const svg = `
+      <svg width="170" height="170" viewBox="0 0 170 170">
+        <circle cx="85" cy="85" r="${r}" fill="none" stroke="var(--border)" stroke-width="18"/>
+        <circle cx="85" cy="85" r="${r}" fill="none" stroke="#34D399" stroke-width="18"
+          stroke-dasharray="${presentLen} ${c - presentLen}" stroke-linecap="round"
+          transform="rotate(-90 85 85)"/>
+        <text x="85" y="80" text-anchor="middle" font-family="Space Grotesk" font-size="26" font-weight="700" fill="var(--text-primary)">${((present/total)*100).toFixed(0)}%</text>
+        <text x="85" y="100" text-anchor="middle" font-family="Inter" font-size="11" fill="var(--text-secondary)">present</text>
+      </svg>`;
+    document.getElementById("donutChart").innerHTML = svg;
+    document.getElementById("donutLegend").innerHTML = `
+      <div class="legend-row"><span class="legend-dot" style="background:#34D399"></span> Present — ${present}</div>
+      <div class="legend-row"><span class="legend-dot" style="background:var(--border)"></span> Absent — ${absent}</div>`;
+  },
+
+  drawWeekly() {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const vals = days.map(() => 60 + Math.round(Math.random() * 35));
+    const max = 100, w = 320, h = 110, bw = w / days.length;
+    const bars = vals.map((v, i) => {
+      const bh = (v / max) * (h - 20);
+      return `<rect x="${i * bw + 10}" y="${h - bh}" width="${bw - 16}" height="${bh}" rx="6" fill="url(#g1)"></rect>
+              <text x="${i * bw + bw/2 - 3}" y="${h + 14}" font-size="10" fill="var(--text-secondary)" font-family="Inter">${days[i]}</text>`;
+    }).join("");
+    document.getElementById("weeklyChart").innerHTML = `
+      <svg width="100%" height="140" viewBox="0 0 ${w} ${h + 18}">
+        <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5B8DEF"/><stop offset="100%" stop-color="#34D399"/>
+        </linearGradient></defs>
+        ${bars}
+      </svg>`;
+  },
+
+  /* ---------------- STUDENTS ---------------- */
+  renderStudents(filter = {}) {
+    let rows = this.state.students;
+    if (filter.q) {
+      const q = filter.q.toLowerCase();
+      rows = rows.filter(s => [s.name, s.studentId, s.rollNo, s.prn].join(" ").toLowerCase().includes(q));
+    }
+    if (filter.class) rows = rows.filter(s => s.class === filter.class);
+
+    document.getElementById("studentsTbody").innerHTML = rows.map(s => `
+      <tr>
+        <td><img class="row-avatar" src="${s.photo}" alt=""></td>
+        <td>${s.name}</td>
+        <td>${s.studentId}</td>
+        <td>${s.class} / ${s.division}</td>
+        <td>${s.credential ? '<span class="status-chip status-present">Registered</span>' : '<span class="status-chip status-fail">No passkey</span>'}</td>
+        <td>${s.status === "active" ? '<span class="status-chip status-present">Active</span>' : '<span class="status-chip status-absent">Inactive</span>'}</td>
+        <td>
+          <button class="icon-btn" data-edit="${s.id}" title="Edit" aria-label="Edit ${s.name}">✎</button>
+          <button class="icon-btn" data-revoke="${s.id}" title="Revoke NFC card" aria-label="Revoke card">🚫</button>
+          <button class="icon-btn" data-delete="${s.id}" title="Delete" aria-label="Delete ${s.name}">🗑</button>
+        </td>
+      </tr>`).join("") || `<tr><td colspan="7" class="text-secondary" style="padding:20px;">No students match.</td></tr>`;
+
+    document.getElementById("classFilter").innerHTML = `<option value="">All classes</option>` +
+      [...new Set(this.state.students.map(s => s.class))].map(c => `<option>${c}</option>`).join("");
+
+    document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => this.openStudentModal(b.dataset.edit));
+    document.querySelectorAll("[data-delete]").forEach(b => b.onclick = () => this.confirmDeleteStudent(b.dataset.delete));
+    document.querySelectorAll("[data-revoke]").forEach(b => b.onclick = () => this.revokeCard(b.dataset.revoke));
+  },
+
+  openStudentModal(id = null) {
+    const s = id ? this.state.students.find(x => x.id === id) : null;
+    document.getElementById("studentModalTitle").textContent = s ? "Edit student" : "Add new student";
+    const f = document.getElementById("studentForm");
+    f.reset();
+    f.dataset.id = s?.id || "";
+    if (s) {
+      f.name.value = s.name; f.studentId.value = s.studentId; f.rollNo.value = s.rollNo;
+      f.prn.value = s.prn; f.class.value = s.class; f.division.value = s.division;
+      f.course.value = s.course; f.nfcId.value = s.nfcId;
+    }
+    document.getElementById("studentModal").classList.add("show");
+  },
+
+  wireModals() {
+    document.getElementById("addStudentBtn").addEventListener("click", () => this.openStudentModal());
+    document.querySelectorAll("[data-close-modal]").forEach(b => b.addEventListener("click", (e) => {
+      e.target.closest(".modal-backdrop").classList.remove("show");
+    }));
+
+    document.getElementById("studentForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const id = f.dataset.id || undefined;
+      const student = {
+        id, name: f.name.value, studentId: f.studentId.value, rollNo: f.rollNo.value,
+        prn: f.prn.value, class: f.class.value, division: f.division.value, course: f.course.value,
+        department: f.course.value, academicYear: this.state.settings.academicYear || "2026-27",
+        nfcId: f.nfcId.value || `NFC-${Math.random().toString(16).slice(2, 8).toUpperCase()}`,
+        photo: `https://i.pravatar.cc/160?img=${Math.floor(Math.random() * 70) + 1}`,
+        status: "active", credential: id ? this.state.students.find(s => s.id === id)?.credential : null,
+      };
+      await VeriTapDB.upsertStudent(student);
+      await VeriTapDB.logSecurityEvent({ type: "student_edit", result: "success", actor: this.currentUser.email, detail: student.name });
+      document.getElementById("studentModal").classList.remove("show");
+      await this.refreshAll();
+      this.renderStudents();
+      this.toast(`Saved ${student.name}.`);
+    });
+
+    document.getElementById("studentSearch")?.addEventListener("input", (e) => this.renderStudents({ q: e.target.value }));
+    document.getElementById("classFilter")?.addEventListener("change", (e) => this.renderStudents({ class: e.target.value }));
+    document.getElementById("statusFilter")?.addEventListener("change", (e) => this.renderAttendance({ status: e.target.value }));
+    document.getElementById("importCsvBtn")?.addEventListener("click", () => this.toast("CSV import: see FIREBASE_SETUP.md for the bulk-import script template."));
+
+    // Settings form
+    document.getElementById("settingsForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      await VeriTapDB.saveSettings({
+        collegeName: f.collegeName.value,
+        academicYear: f.academicYear.value,
+        attendanceStart: f.attendanceStart.value,
+        lateThresholdMin: Number(f.lateThresholdMin.value),
+        closeThresholdMin: Number(f.closeThresholdMin.value),
+        lowAttendanceAlert: Number(f.lowAttendanceAlert.value),
+      });
+      await VeriTapDB.logSecurityEvent({ type: "settings_changed", result: "success", actor: this.currentUser.email });
+      this.toast("Settings saved.");
+    });
+  },
+
+  async confirmDeleteStudent(id) {
+    const s = this.state.students.find(x => x.id === id);
+    if (!confirm(`Delete ${s.name}? This cannot be undone. Type OK to confirm.`)) return;
+    await VeriTapDB.deleteStudent(id);
+    await VeriTapDB.logSecurityEvent({ type: "student_deleted", result: "success", actor: this.currentUser.email, detail: s.name });
+    await this.refreshAll();
+    this.renderStudents();
+    this.toast(`${s.name} deleted.`);
+  },
+
+  async revokeCard(id) {
+    const s = this.state.students.find(x => x.id === id);
+    if (!confirm(`Revoke NFC card for ${s.name}?`)) return;
+    await VeriTapDB.logSecurityEvent({ type: "credential_revocation", result: "success", actor: this.currentUser.email, detail: s.name });
+    this.toast(`Card revoked for ${s.name}.`);
+  },
+
+  /* ---------------- ATTENDANCE ---------------- */
+  renderAttendance(filter = {}) {
+    let rows = this.state.attendance;
+    if (filter.status) rows = rows.filter(r => r.status === filter.status);
+    document.getElementById("attendanceTbody").innerHTML = rows.map(r => {
+      const s = this.state.students.find(x => x.id === r.studentId);
+      return `<tr>
+        <td><img class="row-avatar" src="${s?.photo || ''}" alt=""></td>
+        <td>${r.studentName}</td>
+        <td>${s?.studentId || "—"}</td>
+        <td>${new Date(r.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+        <td>${r.nfcResult === "success" ? "✓" : "✕"}</td>
+        <td>${r.biometricResult === "success" ? "✓" : "✕"}</td>
+        <td><span class="status-chip status-${r.status}">${r.status}</span></td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="7" class="text-secondary" style="padding:20px;">No attendance records yet.</td></tr>`;
+  },
+
+  exportAttendanceCsv() {
+    const header = "Name,StudentID,Time,NFC,Biometric,Status\n";
+    const rows = this.state.attendance.map(r => {
+      const s = this.state.students.find(x => x.id === r.studentId);
+      return [r.studentName, s?.studentId, new Date(r.ts).toLocaleString(), r.nfcResult, r.biometricResult, r.status].join(",");
+    }).join("\n");
+    this.downloadFile("attendance.csv", header + rows, "text/csv");
+  },
+
+  downloadFile(name, content, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  /* ---------------- SECURITY LOG ---------------- */
+  renderSecurityLog() {
+    document.getElementById("securityTbody").innerHTML = this.state.log.map(l => `
+      <tr>
+        <td>${new Date(l.ts).toLocaleString()}</td>
+        <td>${l.type.replace(/_/g, " ")}</td>
+        <td>${l.actor || "—"}</td>
+        <td><span class="status-chip ${l.result === 'success' ? 'status-present' : 'status-fail'}">${l.result}</span></td>
+        <td>${l.deviceId || "—"}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="text-secondary" style="padding:20px;">No events logged yet.</td></tr>`;
+  },
+
+  /* ---------------- SETTINGS ---------------- */
+  renderSettings() {
+    const s = this.state.settings;
+    const f = document.getElementById("settingsForm");
+    f.collegeName.value = s.collegeName || "";
+    f.academicYear.value = s.academicYear || "";
+    f.attendanceStart.value = s.attendanceStart || "09:00";
+    f.lateThresholdMin.value = s.lateThresholdMin ?? 15;
+    f.closeThresholdMin.value = s.closeThresholdMin ?? 30;
+    f.lowAttendanceAlert.value = s.lowAttendanceAlert ?? 75;
+  },
+
+  /* ---------------- SESSIONS / DEVICES ---------------- */
+  renderSessions() {
+    document.getElementById("sessionsTbody").innerHTML = DemoData.sessions.map(s => `
+      <tr><td>${s.subject}</td><td>${s.teacher}</td><td>${s.class}/${s.division}</td><td>${s.date}</td><td>${s.start}–${s.end}</td><td>${s.room}</td></tr>
+    `).join("");
+  },
+
+  renderDevices() {
+    document.getElementById("devicesTbody").innerHTML = DemoData.devices.map(d => `
+      <tr><td>${d.name}</td><td>${d.id}</td><td>${d.location}</td><td>${d.staff}</td>
+      <td><span class="status-chip ${d.active ? 'status-present' : 'status-absent'}">${d.active ? "Active" : "Inactive"}</span></td>
+      <td>${new Date(d.lastActive).toLocaleTimeString()}</td></tr>
+    `).join("");
+  },
+
+  /* ---------------- TOAST ---------------- */
+  toast(msg) {
+    const stack = document.getElementById("toastStack");
+    const t = document.createElement("div");
+    t.className = "toast glass-strong";
+    t.textContent = msg;
+    stack.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+  },
+};
+
+document.addEventListener("DOMContentLoaded", () => Admin.init());
+
+</script>
+<script>
+(function() {
+  const root = document.documentElement;
+  const stored = localStorage.getItem("veritap-theme");
+  if (stored) root.setAttribute("data-theme", stored);
+
+  function toggleTheme() {
+    const next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+    root.setAttribute("data-theme", next);
+    localStorage.setItem("veritap-theme", next);
+  }
+  document.getElementById("themeToggle")?.addEventListener("click", toggleTheme);
+  document.getElementById("themeToggleAdmin")?.addEventListener("click", toggleTheme);
+
+  document.getElementById("tabScanner").addEventListener("click", () => {
+    document.getElementById("scannerApp").classList.add("active");
+    document.getElementById("adminApp").classList.remove("active");
+    document.getElementById("tabScanner").classList.add("active");
+    document.getElementById("tabAdmin").classList.remove("active");
+  });
+  document.getElementById("tabAdmin").addEventListener("click", () => {
+    document.getElementById("adminApp").classList.add("active");
+    document.getElementById("scannerApp").classList.remove("active");
+    document.getElementById("tabAdmin").classList.add("active");
+    document.getElementById("tabScanner").classList.remove("active");
+  });
+
+  // Intercept the "Admin dashboard →" / privacy links inside the scanner view
+  // so this stays a single self-contained file instead of trying to navigate away.
+  document.querySelectorAll('#scannerApp a[href="admin.html"]').forEach(a => {
+    a.href = "#";
+    a.addEventListener("click", (e) => { e.preventDefault(); document.getElementById("tabAdmin").click(); });
+  });
+})();
+</script>
+</body>
+</html>
