@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VeriTap — Live Display</title>
+<meta name="theme-color" content="#0A0E1A">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  html, body { height: 100%; }
+  .display-shell {
+    min-height: 100dvh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 40px;
+  }
+  .display-header {
+    position: fixed; top: 24px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
+  .display-header .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+  .display-header .dot.live { background: var(--mint); box-shadow: 0 0 10px var(--mint); }
+
+  .idle-mark { font-size: 4rem; margin-bottom: 18px; opacity: 0.5; animation: floaty 3s ease-in-out infinite; }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .idle-title { font-size: 1.8rem; margin-bottom: 8px; }
+  .idle-sub { color: var(--text-secondary); font-size: 1.05rem; }
+
+  .display-photo {
+    width: 220px; height: 220px; border-radius: 50px; object-fit: cover;
+    border: 4px solid var(--border); margin-bottom: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+  .display-name { font-size: 2.6rem; margin-bottom: 6px; }
+  .display-meta { font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 18px; }
+  .display-stage-label {
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 8px 22px; border-radius: 999px; margin-bottom: 26px;
+  }
+  .stage-found { background: rgba(91,141,239,0.16); color: var(--blue); border: 1px solid rgba(91,141,239,0.35); }
+  .stage-verifying { background: rgba(245,166,35,0.16); color: var(--amber); border: 1px solid rgba(245,166,35,0.35); }
+  .stage-success { background: rgba(52,211,153,0.16); color: var(--mint); border: 1px solid rgba(52,211,153,0.35); }
+  .stage-failed { background: rgba(239,90,90,0.14); color: var(--red); border: 1px solid rgba(239,90,90,0.35); }
+
+  .big-icon { font-size: 5rem; margin-bottom: 10px; }
+  .display-time { font-family: var(--font-display); font-size: 2rem; font-weight: 700; margin-top: 6px; }
+
+  .verify-pulse { display: flex; gap: 10px; margin-top: 8px; }
+  .verify-pulse span { width: 12px; height: 12px; border-radius: 50%; background: var(--amber); animation: pulseDot 1.2s ease-in-out infinite; }
+  .verify-pulse span:nth-child(2) { animation-delay: 0.2s; }
+  .verify-pulse span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulseDot { 0%,100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+</style>
+</head>
+<body>
+
+<div class="display-header">
+  <span class="dot" id="liveDot"></span>
+  <span id="liveLabel">Connecting…</span>
+</div>
+
+<div class="display-shell" id="displayShell">
+  <div class="idle-mark">🛡️</div>
+  <div class="idle-title">Horizon College Attendance</div>
+  <div class="idle-sub">Ready — waiting for the next card tap…</div>
+</div>
+
+<script src="js/demo-data.js"></script>
+<script src="js/firebase.js"></script>
+<script>
+(async function () {
+  await window.initFirebase();
+  const shell = document.getElementById("displayShell");
+  const liveDot = document.getElementById("liveDot");
+  const liveLabel = document.getElementById("liveLabel");
+
+  liveDot.classList.add("live");
+  liveLabel.textContent = window.DEMO_MODE ? "DEMO MODE — no live device connected" : "Live";
+
+  function renderIdle() {
+    shell.innerHTML = `
+      <div class="idle-mark">🛡️</div>
+      <div class="idle-title">Horizon College Attendance</div>
+      <div class="idle-sub">Ready — waiting for the next card tap…</div>`;
+  }
+
+  function renderFound(d) {
+    shell.innerHTML = `
+      <span class="display-stage-label stage-found">✓ NFC DETECTED</span>
+      <img class="display-photo" src="${d.photo}" alt="">
+      <div class="display-name">${d.name}</div>
+      <div class="display-meta">${d.studentId || ""} · ${d.class} · Div ${d.division} · Roll ${d.rollNo}</div>`;
+  }
+
+  function renderVerifying(d) {
+    shell.innerHTML = `
+      <span class="display-stage-label stage-verifying">VERIFYING IDENTITY</span>
+      <img class="display-photo" src="${d.photo}" alt="">
+      <div class="display-name">${d.name}</div>
+      <div class="verify-pulse"><span></span><span></span><span></span></div>`;
+  }
+
+  function renderSuccess(d) {
+    shell.innerHTML = `
+      <span class="display-stage-label stage-success">✓ ATTENDANCE MARKED</span>
+      <img class="display-photo" src="${d.photo}" alt="">
+      <div class="display-name">${d.name}</div>
+      <div class="display-meta">${d.class} · Div ${d.division} · Roll ${d.rollNo} ${d.late ? "· Late" : ""}</div>
+      <div class="display-time">${d.time || ""}</div>`;
+  }
+
+  function renderFailed(d) {
+    shell.innerHTML = `
+      <div class="big-icon">✕</div>
+      <span class="display-stage-label stage-failed">${d.title || "Verification failed"}</span>
+      <div class="idle-sub" style="margin-top:14px; max-width:480px;">${d.detail || ""}</div>`;
+  }
+
+  VeriTapDB.watchLiveScan((data) => {
+    if (!data || !data.stage || data.stage === "idle") return renderIdle();
+    if (data.stage === "found") return renderFound(data);
+    if (data.stage === "verifying") return renderVerifying(data);
+    if (data.stage === "success") return renderSuccess(data);
+    if (data.stage === "failed") return renderFailed(data);
+  });
+})();
+</script>
+</body>
+</html>
